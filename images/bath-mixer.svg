@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="100%" height="100%" fill="#f7f7f9"/>
+  <g transform="translate(80,80)">
+    <rect width="1040" height="640" rx="20" fill="#ffffff" stroke="#eaeaea"/>
+    <text x="80" y="160" font-size="44" fill="#222">Змішувач для ванної</text>
+    <text x="80" y="210" font-size="20" fill="#666">Мат. чорний, з душем</text>
+    <rect x="80" y="260" width="420" height="260" rx="12" fill="#eef0f2"/>
+    <rect x="540" y="260" width="420" height="260" rx="12" fill="#f6f5f3"/>
+  </g>
+</svg>

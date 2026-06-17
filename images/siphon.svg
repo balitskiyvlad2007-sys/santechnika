@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <g transform="translate(80,80)">
+    <rect width="1040" height="640" rx="20" fill="#fbfdff" stroke="#e9eef2"/>
+    <text x="80" y="160" font-size="44" fill="#333">Сифон для раковини</text>
+    <text x="80" y="210" font-size="20" fill="#666">Гофрований, сухий затвор</text>
+    <circle cx="300" cy="380" r="80" fill="#dde8ef"/>
+    <rect x="250" y="460" width="100" height="20" fill="#cbdbe6" rx="6"/>
+  </g>
+</svg>

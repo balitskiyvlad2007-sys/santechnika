@@ -1,0 +1,6 @@
+{
+  "apiKey": "480c30eb5bbdc4d1adbf5e6442f19b13",
+  "modelName": "Address",
+  "calledMethod": "searchSettlements",
+  "methodProperties": { "CityName": "Ки", "Page": 2 }
+}

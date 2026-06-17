@@ -1,0 +1,6 @@
+{
+  "apiKey": "480c30eb5bbdc4d1adbf5e6442f19b13",
+  "modelName": "AddressGeneral",
+  "calledMethod": "getWarehouses",
+  "methodProperties": { "CityRef": "e718a680-4b33-11e4-ab6d-005056801329" }
+}

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Про нас — Сучасна Сантехніка</title>
+    <style>
+        :root {
+            --bg-color: #0d0e12;
+            --card-bg: #161820;
+            --text-color: #ffffff;
+            --text-muted: #8b8e99;
+            --accent-color: #ff5c00;
+            --border-color: #242736;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        /* Навігація */
+        nav { display: flex; gap: 20px; margin-top: 20px; background: var(--card-bg); padding: 15px 30px; border-radius: 30px; border: 1px solid var(--border-color); max-width: fit-content; }
+        nav a { text-decoration: none; font-weight: 600; }
+
+        .about-container {
+            max-width: 800px;
+            width: 100%;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 40px;
+            margin-top: 50px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 20px; color: white; }
+        p { color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; margin-bottom: 20px; }
+        
+        .principles {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .principle-item {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 16px;
+        }
+        .principle-item h3 { font-size: 1.2rem; margin-bottom: 10px; color: var(--accent-color); }
+        .principle-item p { font-size: 0.95rem; margin-bottom: 0; }
+
+        /* Футтер */
+        footer {
+            width: 100%;
+            max-width: 800px;
+            border-top: 1px solid var(--border-color);
+            padding: 30px 10px;
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        footer a { color: var(--text-muted); text-decoration: none; }
+        footer a:hover { color: var(--accent-color); }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="index.html" style="color: #fff;">Каталог</a>
+        <a href="about.html" style="color: var(--accent-color);">Про нас</a>
+        <a href="contacts.html" style="color: #fff;">Контакти</a>
+    </nav>
+
+    <div class="about-container">
+        <h1>Про компанію</h1>
+        <p>Ми просто займаємося постачанням та продажем якісної сантехніки для дому, квартир та комерційних приміщень. Наша мета — надати клієнту надійне обладнання без зайвої бюрократії, накруток та довгих очікувань.</p>
+        <p>У нашому каталозі зібрані перевірені позиції: від надійних змішувачів до сучасних інсталяцій. Ми ретельно відбираємо кожен товар, щоб ви отримали довговічну річ, яка не підведе в процесі експлуатації.</p>
+        
+        <div class="principles">
+            <div class="principle-item">
+                <h3>Чесність</h3>
+                <p>Ніяких прихованих платежів чи фейкових знижок. Ціна в каталозі завжди актуальна.</p>
+            </div>
+            <div class="principle-item">
+                <h3>Швидкість</h3>
+                <p>Обробляємо замовлення відразу і намагаємося доставити товар якнайшвидше.</p>
+            </div>
+            <div class="principle-item">
+                <h3>Контроль</h3>
+                <p>Перевіряємо комплектацію та цілісність обладнання перед кожною відправкою.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div>© 2026 Сучасна Сантехніка. Всі права захищені.</div>
+        <div style="display: flex; gap: 15px;">
+            <a href="index.html">Каталог</a>
+            <a href="about.html">Про нас</a>
+            <a href="contacts.html">Контакти</a>
+        </div>
+    </footer>
+
+</body>
+</html>

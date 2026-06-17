@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Адміністрація — Об'явлення</title>
+    <style>
+        :root {
+            --bg: #0d0e12; --card: #161820; --text: #fff; --muted: #8b8e99;
+            --accent: #ff5c00; --border: #242736; --danger: #e74c3c; --success: #27ae60;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 20px; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        nav { display: flex; gap: 20px; margin-bottom: 40px; background: var(--card); padding: 15px 30px; border-radius: 30px; border: 1px solid var(--border); width: fit-content; }
+        nav a { text-decoration: none; color: var(--text); font-weight: 600; }
+        nav a:hover { color: var(--accent); }
+
+        h1 { font-size: 2rem; margin-bottom: 6px; }
+        .subtitle { color: var(--muted); margin-bottom: 30px; }
+
+        /* Auth banner */
+        #auth-banner { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 30px; margin-bottom: 30px; display: flex; gap: 12px; align-items: flex-end; }
+        #auth-banner label { display: block; color: var(--muted); font-size: 0.85rem; margin-bottom: 6px; }
+        #auth-banner input { padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 1rem; width: 280px; }
+        #auth-banner input:focus { outline: none; border-color: var(--accent); }
+        .btn { padding: 10px 22px; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: #e05200; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-secondary { background: var(--border); color: var(--text); }
+        .btn-secondary:hover { background: #333; }
+        .btn-edit { background: #2c3e50; color: #fff; }
+        .btn-edit:hover { background: #3d5166; }
+
+        /* Message */
+        .msg { padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; display: none; }
+        .msg.success { background: rgba(39,174,96,.12); border: 1px solid var(--success); color: var(--success); display: block; }
+        .msg.error   { background: rgba(231,76,60,.12);  border: 1px solid var(--danger);  color: var(--danger);  display: block; }
+
+        /* Add form */
+        .section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; margin-bottom: 28px; }
+        .section h2 { margin-bottom: 20px; font-size: 1.3rem; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; color: var(--muted); font-size: 0.85rem; margin-bottom: 5px; }
+        .form-group input, .form-group textarea { width: 100%; padding: 11px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.95rem; }
+        .form-group textarea { resize: vertical; min-height: 90px; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+
+        /* List */
+        .ann-item { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; display: flex; gap: 14px; align-items: flex-start; }
+        .ann-thumb { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+        .ann-thumb-placeholder { width: 72px; height: 72px; border-radius: 8px; background: linear-gradient(135deg,#ff5c00,#ff8c42); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0; }
+        .ann-body { flex: 1; min-width: 0; }
+        .ann-body h3 { color: var(--accent); margin-bottom: 4px; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ann-body p { color: var(--muted); font-size: 0.88rem; line-height: 1.4; }
+        .ann-meta { color: #555; font-size: 0.78rem; margin-top: 6px; }
+        .ann-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+        .modal-overlay.hidden { display: none; }
+        .modal { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 30px; width: 100%; max-width: 520px; }
+        .modal h2 { margin-bottom: 20px; }
+        .modal-footer { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+
+        .empty { color: var(--muted); text-align: center; padding: 30px; }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="index.html">Каталог</a>
+    <a href="admin.html" style="color:var(--accent)">Адміністрація</a>
+</nav>
+
+<div class="container">
+    <h1>Адміністрація об'явлень</h1>
+    <p class="subtitle">Додавайте, редагуйте та видаляйте об'явлення</p>
+
+    <!-- Auth -->
+    <div id="auth-banner">
+        <div>
+            <label for="admin-pw">Пароль адміна</label>
+            <input type="password" id="admin-pw" placeholder="Введіть пароль" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" onclick="setPassword()">Увійти</button>
+    </div>
+
+    <div id="msg" class="msg"></div>
+
+    <!-- Add form -->
+    <div class="section">
+        <h2>➕ Нове об'явлення</h2>
+        <div class="form-group">
+            <label>Назва *</label>
+            <input type="text" id="new-title" placeholder="напр. Знижка 20% на змішувачі">
+        </div>
+        <div class="form-group">
+            <label>Опис *</label>
+            <textarea id="new-desc" placeholder="Деталі пропозиції..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>URL картинки (необов'язково)</label>
+            <input type="url" id="new-img" placeholder="https://...">
+        </div>
+        <button class="btn btn-primary" onclick="addAnnouncement()">Додати</button>
+    </div>
+
+    <!-- List -->
+    <div class="section">
+        <h2>📋 Поточні об'явлення</h2>
+        <div id="list-container"><p class="empty">Завантаження...</p></div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay hidden" id="modal">
+    <div class="modal">
+        <h2>✏️ Редагування</h2>
+        <input type="hidden" id="edit-id">
+        <div class="form-group">
+            <label>Назва *</label>
+            <input type="text" id="edit-title">
+        </div>
+        <div class="form-group">
+            <label>Опис *</label>
+            <textarea id="edit-desc"></textarea>
+        </div>
+        <div class="form-group">
+            <label>URL картинки</label>
+            <input type="url" id="edit-img">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Скасувати</button>
+            <button class="btn btn-primary" onclick="saveEdit()">Зберегти</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let pw = '';
+
+function setPassword() {
+    pw = document.getElementById('admin-pw').value.trim();
+    if (!pw) return showMsg('Введіть пароль', 'error');
+    showMsg('Пароль збережено. Тепер можна додавати та редагувати.', 'success');
+    loadList();
+}
+
+function showMsg(text, type) {
+    const el = document.getElementById('msg');
+    el.textContent = text;
+    el.className = 'msg ' + type;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.className = 'msg', 4000);
+}
+
+function formatDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('uk-UA') + ' ' + d.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function loadList() {
+    const res = await fetch(`${API}/api/announcements`);
+    const items = await res.json();
+    const cont = document.getElementById('list-container');
+    if (!items.length) { cont.innerHTML = '<p class="empty">Немає об\'явлень</p>'; return; }
+    cont.innerHTML = items.map(a => `
+        <div class="ann-item" id="ann-${a.id}">
+            ${a.imageUrl
+                ? `<img class="ann-thumb" src="${a.imageUrl}" alt="${a.title}" onerror="this.style.display='none'">`
+                : `<div class="ann-thumb-placeholder">📢</div>`}
+            <div class="ann-body">
+                <h3>${a.title}</h3>
+                <p>${a.description}</p>
+                <div class="ann-meta">Додано: ${formatDate(a.createdAt)}${a.updatedAt ? ' · Змінено: ' + formatDate(a.updatedAt) : ''}</div>
+            </div>
+            <div class="ann-actions">
+                <button class="btn btn-edit" onclick="openEdit('${a.id}','${esc(a.title)}','${esc(a.description)}','${esc(a.imageUrl||'')}')">✏️</button>
+                <button class="btn btn-danger" onclick="deleteAnn('${a.id}')">🗑️</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function esc(s) { return (s||'').replace(/'/g, "\\'").replace(/\n/g, '\\n'); }
+
+async function addAnnouncement() {
+    if (!pw) return showMsg('Спочатку введіть пароль', 'error');
+    const title = document.getElementById('new-title').value.trim();
+    const description = document.getElementById('new-desc').value.trim();
+    const imageUrl = document.getElementById('new-img').value.trim();
+    if (!title || !description) return showMsg('Заповніть назву та опис', 'error');
+
+    const res = await fetch(`${API}/api/announcements`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw, title, description, imageUrl })
+    });
+    const data = await res.json();
+    if (res.ok) {
+        showMsg('Об\'явлення додано!', 'success');
+        document.getElementById('new-title').value = '';
+        document.getElementById('new-desc').value = '';
+        document.getElementById('new-img').value = '';
+        loadList();
+    } else {
+        showMsg(data.error || 'Помилка', 'error');
+    }
+}
+
+function openEdit(id, title, desc, img) {
+    document.getElementById('edit-id').value = id;
+    document.getElementById('edit-title').value = title.replace(/\\n/g, '\n');
+    document.getElementById('edit-desc').value = desc.replace(/\\n/g, '\n');
+    document.getElementById('edit-img').value = img;
+    document.getElementById('modal').classList.remove('hidden');
+}
+
+function closeModal() {
+    document.getElementById('modal').classList.add('hidden');
+}
+
+async function saveEdit() {
+    if (!pw) return showMsg('Спочатку введіть пароль', 'error');
+    const id = document.getElementById('edit-id').value;
+    const title = document.getElementById('edit-title').value.trim();
+    const description = document.getElementById('edit-desc').value.trim();
+    const imageUrl = document.getElementById('edit-img').value.trim();
+    if (!title || !description) return showMsg('Заповніть назву та опис', 'error');
+
+    const res = await fetch(`${API}/api/announcements/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw, title, description, imageUrl })
+    });
+    const data = await res.json();
+    if (res.ok) {
+        showMsg('Збережено!', 'success');
+        closeModal();
+        loadList();
+    } else {
+        showMsg(data.error || 'Помилка', 'error');
+    }
+}
+
+async function deleteAnn(id) {
+    if (!pw) return showMsg('Спочатку введіть пароль', 'error');
+    if (!confirm('Видалити це об\'явлення?')) return;
+    const res = await fetch(`${API}/api/announcements/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw })
+    });
+    const data = await res.json();
+    if (res.ok) {
+        showMsg('Видалено', 'success');
+        loadList();
+    } else {
+        showMsg(data.error || 'Помилка', 'error');
+    }
+}
+
+// Close modal on overlay click
+document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+loadList();
+</script>
+</body>
+</html>
