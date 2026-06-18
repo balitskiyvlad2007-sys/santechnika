@@ -195,6 +195,8 @@ app.get('/api/announcements', (req, res) => {
 });
 
 // POST /api/announcements - add announcement (requires password)
+// ================= ANNOUNCEMENTS ROUTES =================
+
 app.post('/api/announcements', (req, res) => {
   const { password, title, description, imageUrl } = req.body;
   if (password !== ADMIN_PASSWORD) {
@@ -231,84 +233,57 @@ app.delete('/api/announcements/:id', (req, res) => {
   res.json({ success: true, message: 'Announcement deleted' });
 });
 
-// Order form — send email via Gmail (nodemailer)
+
+// ================= ORDER FORM (NODEMAILER) =================
+
 const nodemailer = require('nodemailer');
 
 app.post('/api/order', async (req, res) => {
-  const { name, phone, delivery, city, branch, comment } = req.body;
-
-  // Если нет имени или телефона, сразу шлем лесом
-  if (!name || !phone) {
-    return res.status(400).json({ error: "Ім'я та телефон обов'язки для заповнення" });
-  }
-
-  // Настройка транспорта под порт 465 (SSL)
-  const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, 
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_PASS,
-    },
-    connectionTimeout: 10000, // 10 секунд на подключение максимум
-  });
-
-  const mailOptions = {
-    from: process.env.GMAIL_USER,
-    to: process.env.ORDER_EMAIL || process.env.GMAIL_USER,
-    subject: '🛒 Нове замовлення з сайту!',
-    html: `
-      <h2>Нове замовлення</h2>
-      <table style="border-collapse:collapse;width:100%">
-        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Ім'я</td><td style="padding:8px;border:1px solid #ddd">${name}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Телефон</td><td style="padding:8px;border:1px solid #ddd">${phone}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Доставка</td><td style="padding:8px;border:1px solid #ddd">${delivery || '—'}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Місто</td><td style="padding:8px;border:1px solid #ddd">${city || '—'}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Відділення</td><td style="padding:8px;border:1px solid #ddd">${branch || '—'}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Товар / Коментар</td><td style="padding:8px;border:1px solid #ddd">${comment || '—'}</td></tr>
-      </table>
-    `,
-  };
-
   try {
+    const { name, phone, delivery, city, branch, comment } = req.body;
+
+    // Если нет имени или телефона, сразу отдаем ошибку
+    if (!name || !phone) {
+      return res.status(400).json({ error: "Ім'я та телефон обов'язкові для заповнения" });
+    }
+
+    // Настройка транспорта под защищенный порт 465 (SSL)
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, 
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+      },
+      connectionTimeout: 10000, // 10 секунд лимит на подключение
+    });
+
+    const mailOptions = {
+      from: process.env.GMAIL_USER,
+      to: process.env.ORDER_EMAIL || process.env.GMAIL_USER,
+      subject: '🛒 Нове замовлення з сайту!',
+      html: `
+        <h2>Нове замовлення</h2>
+        <table style="border-collapse:collapse;width:100%">
+          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Ім'я</td><td style="padding:8px;border:1px solid #ddd">${name}</td></tr>
+          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Telephone</td><td style="padding:8px;border:1px solid #ddd">${phone}</td></tr>
+          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Доставка</td><td style="padding:8px;border:1px solid #ddd">${delivery || '—'}</td></tr>
+          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Місто</td><td style="padding:8px;border:1px solid #ddd">${city || '—'}</td></tr>
+          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Відділення</td><td style="padding:8px;border:1px solid #ddd">${branch || '—'}</td></tr>
+          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Товар / Коментар</td><td style="padding:8px;border:1px solid #ddd">${comment || '—'}</td></tr>
+        </table>
+      `,
+    };
+
     console.log('Пробуем отправить письмо через Nodemailer...');
     await transporter.sendMail(mailOptions);
     console.log('Письмо успешно отправлено!');
+    
     return res.json({ success: true, message: 'Замовлення успішно відправлено' });
+
   } catch (error) {
     console.error('КРИТИЧЕСКАЯ ОШИБКА НА СЕРВЕРЕ:', error);
-    // Вот этот кусок вернет ошибку на фронт и остановит крутилку!
     return res.status(500).json({ error: 'Помилка сервера при відправці: ' + error.message });
   }
-});
-
-  const mailOptions = {
-    from: process.env.GMAIL_USER,
-    to: process.env.ORDER_EMAIL || process.env.GMAIL_USER,
-    subject: '🛒 Нове замовлення з сайту!',
-    html: `
-      <h2>Нове замовлення</h2>
-      <table style="border-collapse:collapse;width:100%">
-        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Ім'я</td><td style="padding:8px;border:1px solid #ddd">${name}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Телефон</td><td style="padding:8px;border:1px solid #ddd">${phone}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Доставка</td><td style="padding:8px;border:1px solid #ddd">${delivery || '—'}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Місто</td><td style="padding:8px;border:1px solid #ddd">${city || '—'}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Відділення</td><td style="padding:8px;border:1px solid #ddd">${branch || '—'}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Товар / Коментар</td><td style="padding:8px;border:1px solid #ddd">${comment || '—'}</td></tr>
-      </table>
-    `,
-  };
-
- try {
-    console.log('Пробуем отправить письмо...');
-    // Тут должен быть строго AWAIT
-    await transporter.sendMail(mailOptions);
-    console.log('Письмо успешно отправлено!');
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Mail error:', err.message);
-    res.status(500).json({ error: 'Помилка відправки. Перевірте GMAIL_USER та GMAIL_PASS.' });
-  }
-// Вот здесь закрывается сам роут app.post
 });
