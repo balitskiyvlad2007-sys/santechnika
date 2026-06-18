@@ -216,25 +216,6 @@ app.post('/api/announcements', (req, res) => {
   res.json({ success: true, announcement: newAnnouncement });
 });
 
-// PUT /api/announcements/:id - edit announcement (requires password)
-app.put('/api/announcements/:id', (req, res) => {
-  const { password, title, description, imageUrl } = req.body;
-  if (password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'Invalid password' });
-  }
-  if (!title || !description) {
-    return res.status(400).json({ error: 'Title and description are required' });
-  }
-  const announcements = loadAnnouncements();
-  const idx = announcements.findIndex(a => a.id === req.params.id);
-  if (idx === -1) {
-    return res.status(404).json({ error: 'Announcement not found' });
-  }
-  announcements[idx] = { ...announcements[idx], title, description, imageUrl: imageUrl || '', updatedAt: new Date().toISOString() };
-  saveAnnouncements(announcements);
-  res.json({ success: true, announcement: announcements[idx] });
-});
-
 // DELETE /api/announcements/:id - delete announcement (requires password)
 app.delete('/api/announcements/:id', (req, res) => {
   const { password } = req.body;
@@ -248,6 +229,49 @@ app.delete('/api/announcements/:id', (req, res) => {
   }
   saveAnnouncements(filtered);
   res.json({ success: true, message: 'Announcement deleted' });
+});
+
+// Order form — send email via Gmail (nodemailer)
+const nodemailer = require('nodemailer');
+
+app.post('/api/order', async (req, res) => {
+  const { name, phone, delivery, city, branch, comment } = req.body;
+  if (!name || !phone) {
+    return res.status(400).json({ error: 'Імя та телефон обовязкові' });
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_PASS,
+    },
+  });
+
+  const mailOptions = {
+    from: process.env.GMAIL_USER,
+    to: process.env.ORDER_EMAIL || process.env.GMAIL_USER,
+    subject: '🛒 Нове замовлення з сайту!',
+    html: `
+      <h2>Нове замовлення</h2>
+      <table style="border-collapse:collapse;width:100%">
+        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Ім'я</td><td style="padding:8px;border:1px solid #ddd">${name}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Телефон</td><td style="padding:8px;border:1px solid #ddd">${phone}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Доставка</td><td style="padding:8px;border:1px solid #ddd">${delivery || '—'}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Місто</td><td style="padding:8px;border:1px solid #ddd">${city || '—'}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Відділення</td><td style="padding:8px;border:1px solid #ddd">${branch || '—'}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Товар / Коментар</td><td style="padding:8px;border:1px solid #ddd">${comment || '—'}</td></tr>
+      </table>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Mail error:', err.message);
+    res.status(500).json({ error: 'Помилка відправки. Перевірте GMAIL_USER та GMAIL_PASS.' });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
