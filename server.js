@@ -205,12 +205,13 @@ app.post('/api/announcements', (req, res) => {
   }
   const announcements = loadAnnouncements();
   const newAnnouncement = {
-    id: Date.now().toString(),
-    title,
-    description,
-    imageUrl: imageUrl || '',
-    createdAt: new Date().toISOString()
-  };
+        id: Date.now().toString(),
+        title,
+        description,
+        imageUrl: imageUrl || '',
+        price: price || 'Договірна', // <--- ВОТ ТУТ ЦЕНА ПРИНИМАЕТСЯ
+        createdAt: new Date().toISOString()
+    };
   announcements.push(newAnnouncement);
   saveAnnouncements(announcements);
   res.json({ success: true, announcement: newAnnouncement });

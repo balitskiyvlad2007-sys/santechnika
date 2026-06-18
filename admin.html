@@ -192,22 +192,35 @@ function esc(s) { return (s||'').replace(/'/g, "\\'").replace(/\n/g, '\\n'); }
 
 async function addAnnouncement() {
     if (!pw) return showMsg('Спочатку введіть пароль', 'error');
+    
+    // Собираем данные
     const title = document.getElementById('new-title').value.trim();
     const description = document.getElementById('new-desc').value.trim();
     const imageUrl = document.getElementById('new-img').value.trim();
+    const price = document.getElementById('product-price').value.trim(); // <--- Добавили цену
+
     if (!title || !description) return showMsg('Заповніть назву та опис', 'error');
 
+    // Отправляем объект с ценой
     const res = await fetch(`${API}/api/announcements`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw, title, description, imageUrl })
+        body: JSON.stringify({ 
+            password: pw, 
+            title, 
+            description, 
+            imageUrl, 
+            price // <--- Передаем цену на сервер
+        })
     });
+
     const data = await res.json();
     if (res.ok) {
         showMsg('Об\'явлення додано!', 'success');
         document.getElementById('new-title').value = '';
         document.getElementById('new-desc').value = '';
         document.getElementById('new-img').value = '';
+        document.getElementById('product-price').value = ''; // <--- Очищаем поле цены
         loadList();
     } else {
         showMsg(data.error || 'Помилка', 'error');
