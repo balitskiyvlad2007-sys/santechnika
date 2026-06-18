@@ -239,15 +239,14 @@ app.post('/api/order', async (req, res) => {
 
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465,
-      secure: true, 
+      port: 587,
+      secure: false, // для 587 порта secure ДОЛЖЕН быть false
       auth: {
         user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_PASS,
+        pass: process.env.GMAIL_PASS, // Тут строго 16-значный пароль приложения!
       },
       connectionTimeout: 10000,
     });
-
     const mailOptions = {
       from: process.env.GMAIL_USER,
       to: process.env.ORDER_EMAIL || process.env.GMAIL_USER,
