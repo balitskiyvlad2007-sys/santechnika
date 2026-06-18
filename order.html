@@ -27,11 +27,17 @@
         .form-group label { display: block; color: var(--text-muted); margin-bottom: 8px; font-size: 0.9rem; font-weight: 500; }
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 15px; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; color: white; font-size: 1rem; font-family: inherit; }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--accent-color); }
+        .form-group select option { background: var(--card-bg); }
         
         .submit-btn { width: 100%; background-color: var(--accent-color); color: white; border: none; padding: 16px; border-radius: 12px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
         .submit-btn:hover { background-color: #e05200; }
+        .submit-btn:disabled { background-color: #555; cursor: not-allowed; }
         .back-link { display: block; text-align: center; margin-top: 20px; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; }
         .back-link:hover { color: white; }
+
+        .msg { padding: 14px 18px; border-radius: 10px; margin-bottom: 20px; font-weight: 500; text-align: center; display: none; }
+        .msg.success { background: rgba(39,174,96,.12); border: 1px solid #27ae60; color: #27ae60; display: block; }
+        .msg.error   { background: rgba(231,76,60,.12);  border: 1px solid #e74c3c; color: #e74c3c;  display: block; }
     </style>
 </head>
 <body>
@@ -43,258 +49,220 @@
     </nav>
 
     <div class="form-container">
-        <h1>Оформлення замовлення</h1>
-        <p class="subtitle">Заповніть форму, і заявка впаде нам на пошту через Web3Forms</p>
+        <h1 id="form-title">Оформлення замовлення</h1>
+        <p class="subtitle">Заповніть форму — ми зв'яжемося з вами найближчим часом</p>
+
+        <div id="msg" class="msg"></div>
+
+        <div class="form-group">
+            <label>Ваше ім'я та прізвище *</label>
+            <input type="text" id="name" placeholder="Іван Іванов" required>
+        </div>
         
-        <form action="https://api.web3forms.com/submit" method="POST">
-            <!-- Твій API ключ -->
-            <input type="hidden" name="access_key" value="007cd547-0720-4fc3-94f6-7e0742d6a011">
-            <input type="hidden" name="_subject" value="Нове замовлення сантехніки з сайту!">
-            
-            <div class="form-group">
-                <label>Ваше ім'я та прізвище *</label>
-                <input type="text" name="name" placeholder="Іван Іванов" required>
-            </div>
-            
-            <div class="form-group">
-                <label>Номер телефону *</label>
-                <input type="tel" name="phone" placeholder="+380" required>
-            </div>
+        <div class="form-group">
+            <label>Номер телефону *</label>
+            <input type="tel" id="phone" placeholder="+380" required>
+        </div>
 
-            <div class="form-group">
-                <label>Спосіб доставки</label>
-                <select name="delivery" id="delivery-select">
-                    <option value="Nova Poshta">Нова Пошта (відділення)</option>
-                    <option value="Ukrposhta">Укрпошта (відділення)</option>
-                </select>
-            </div>
+        <div class="form-group">
+            <label>Спосіб доставки</label>
+            <select id="delivery-select">
+                <option value="Nova Poshta">Нова Пошта (відділення)</option>
+                <option value="Ukrposhta">Укрпошта (відділення)</option>
+            </select>
+        </div>
 
-            <div class="form-group">
-                <label>Населений пункт *</label>
-                <input type="text" name="city" id="city-input" list="city-list" placeholder="напр. Київ" required>
-                <datalist id="city-list"></datalist>
-            </div>
+        <div class="form-group">
+            <label>Населений пункт *</label>
+            <input type="text" id="city-input" list="city-list" placeholder="напр. Київ" required>
+            <datalist id="city-list"></datalist>
+        </div>
 
-            <div class="form-group" id="branch-group">
-                <label>Відділення / Отделение</label>
-                <select name="branch" id="branch-select">
-                    <option value="">Оберіть населений пункт</option>
-                </select>
-            </div>
+        <div class="form-group" id="branch-group">
+            <label>Відділення</label>
+            <select id="branch-select">
+                <option value="">Оберіть населений пункт</option>
+            </select>
+        </div>
 
-            <div class="form-group" id="address-detail-group" style="display:none;">
-                <label>Адреса доставки (якщо потрібно)</label>
-                <input type="text" name="address" id="address-detail" placeholder="Точна адреса для кур'єра">
-            </div>
-
-            <div class="form-group">
-                <label>Який товар замовляєте? / Коментар</label>
-                <textarea name="comment" placeholder="напр. Змішувач для кухні класичний" rows="3"></textarea>
-            </div>
-            
-            <button type="submit" class="submit-btn">Підтвердити замовлення</button>
-        </form>
+        <div class="form-group">
+            <label>Який товар замовляєте? / Коментар</label>
+            <textarea id="comment" placeholder="напр. Змішувач для кухні класичний" rows="3"></textarea>
+        </div>
+        
+        <button class="submit-btn" id="submit-btn" onclick="submitOrder()">Підтвердити замовлення</button>
 
         <a href="index.html" class="back-link">← Повернутися до каталогу</a>
     </div>
 
     <script>
-        (function(){
-            try{
-                const params = new URLSearchParams(window.location.search);
-                const title = params.get('title');
-                if (title) {
-                    const comment = document.querySelector('textarea[name="comment"]');
-                    if (comment) comment.value = title;
-                    const docTitle = document.querySelector('h1');
-                    if (docTitle) docTitle.textContent = 'Оформлення замовлення — ' + title;
-                }
-            } catch(e) { /* silent */ }
-
-            // Mock data for fallback when proxy or API not available.
-            const mockData = {
-                "Nova Poshta": {
-                    cities: ["Київ", "Львів", "Харків", "Одеса"],
-                    branches: {
-                        "Київ": ["Відділення №1", "Відділення №15", "Відділення №42"],
-                        "Львів": ["Відділення №3", "Відділення №7"],
-                        "Харків": ["Відділення №5", "Відділення №12"],
-                        "Одеса": ["Відділення №2", "Відділення №8"]
-                    }
-                },
-                "Ukrposhta": {
-                    cities: ["Київ", "Львів", "Одеса", "Дніпро"],
-                    branches: {
-                        "Київ": ["Відділення Укрпошти 10", "Відділення Укрпошти 22"],
-                        "Львів": ["Відділення Укрпошти 5"],
-                        "Одеса": ["Відділення Укрпошти 3"],
-                        "Дніпро": ["Відділення Укрпошти 11"]
-                    }
-                }
-            };
-
-            const deliverySelect = document.getElementById('delivery-select');
-            const cityInput = document.getElementById('city-input');
-            const cityList = document.getElementById('city-list');
-            const branchSelect = document.getElementById('branch-select');
-            const branchGroup = document.getElementById('branch-group');
-            const addressDetailGroup = document.getElementById('address-detail-group');
-            const API_BASE = window.location.origin.startsWith('http') ? window.location.origin : 'http://localhost:3000';
-            const cityRefMap = new Map();
-            let cityTimer = null;
-
-            function debounce(fn, delay) {
-                return (...args) => {
-                    if (cityTimer) clearTimeout(cityTimer);
-                    cityTimer = setTimeout(() => fn(...args), delay);
-                };
+    (function(){
+        // Prefill from URL params
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const title = params.get('title');
+            if (title) {
+                document.getElementById('comment').value = title;
+                document.getElementById('form-title').textContent = 'Замовлення — ' + title;
             }
+        } catch(e) {}
 
-            async function populateCityList(provider, query = '') {
-                cityList.innerHTML = '';
-                cityRefMap.clear();
-                if (!query || query.length < 2) {
-                    return;
+        const mockData = {
+            "Nova Poshta": {
+                cities: ["Київ","Львів","Харків","Одеса"],
+                branches: {
+                    "Київ": ["Відділення №1","Відділення №15","Відділення №42"],
+                    "Львів": ["Відділення №3","Відділення №7"],
+                    "Харків": ["Відділення №5","Відділення №12"],
+                    "Одеса": ["Відділення №2","Відділення №8"]
                 }
-                const providerId = provider === 'Nova Poshta' ? 'np' : 'ukr';
-                try {
-                    const res = await fetch(`${API_BASE}/api/${providerId}/search?q=${encodeURIComponent(query)}`);
-                    if (!res.ok) throw new Error('no proxy');
-                    const data = await res.json();
-                    if (Array.isArray(data) && data.length) {
-                        data.forEach(item => {
-                            const label = item.Description || item.name || item;
-                            const opt = document.createElement('option');
-                            opt.value = label;
-                            cityList.appendChild(opt);
-                            if (provider === 'Nova Poshta' && (item.Ref || item.DeliveryCity)) {
-                                cityRefMap.set(label, { Ref: item.Ref, DeliveryCity: item.DeliveryCity });
-                            }
-                        });
-                        return;
-                    }
-                } catch (e) {
-                    // fallback to mock
-                    const list = (mockData[provider] && mockData[provider].cities) || [];
-                    list.forEach(c => {
+            },
+            "Ukrposhta": {
+                cities: ["Київ","Львів","Одеса","Дніпро"],
+                branches: {
+                    "Київ": ["Укрпошта №10","Укрпошта №22"],
+                    "Львів": ["Укрпошта №5"],
+                    "Одеса": ["Укрпошта №3"],
+                    "Дніпро": ["Укрпошта №11"]
+                }
+            }
+        };
+
+        const deliverySelect = document.getElementById('delivery-select');
+        const cityInput = document.getElementById('city-input');
+        const cityList = document.getElementById('city-list');
+        const branchSelect = document.getElementById('branch-select');
+        const cityRefMap = new Map();
+        const API_BASE = window.location.origin;
+        let cityTimer = null;
+
+        async function populateCityList(provider, query) {
+            cityList.innerHTML = '';
+            cityRefMap.clear();
+            if (!query || query.length < 2) return;
+            const pid = provider === 'Nova Poshta' ? 'np' : 'ukr';
+            try {
+                const res = await fetch(`${API_BASE}/api/${pid}/search?q=${encodeURIComponent(query)}`);
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                if (Array.isArray(data) && data.length) {
+                    data.forEach(item => {
+                        const label = item.Description || item.name || item;
                         const opt = document.createElement('option');
-                        opt.value = c;
+                        opt.value = label;
                         cityList.appendChild(opt);
+                        if (provider === 'Nova Poshta' && (item.Ref || item.DeliveryCity)) {
+                            cityRefMap.set(label, { Ref: item.Ref, DeliveryCity: item.DeliveryCity });
+                        }
                     });
-                }
-            }
-
-            async function populateBranches(provider, city) {
-                branchSelect.innerHTML = '';
-                const providerId = provider === 'Nova Poshta' ? 'np' : 'ukr';
-                let data = [];
-                try {
-                    let refValue = null;
-                    if (provider === 'Nova Poshta' && cityRefMap.has(city)) {
-                        const cityData = cityRefMap.get(city);
-                        // cityData contains both Ref and DeliveryCity; prefer DeliveryCity
-                        refValue = cityData.DeliveryCity || cityData.Ref;
-                    }
-                    
-                    const url = refValue
-                        ? `${API_BASE}/api/${providerId}/branches?cityRef=${encodeURIComponent(refValue)}`
-                        : `${API_BASE}/api/${providerId}/branches?cityName=${encodeURIComponent(city)}`;
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error('no branches');
-                    data = await res.json();
-                    
-                    if (Array.isArray(data) && data.length) {
-                        data.forEach(b => {
-                            const opt = document.createElement('option');
-                            opt.value = b.Description || b;
-                            opt.textContent = b.Description || b;
-                            branchSelect.appendChild(opt);
-                        });
-                        return;
-                    }
-                } catch (e) {
-                    // ignore and show fallback
-                }
-                const branches = (mockData[provider] && mockData[provider].branches && mockData[provider].branches[city]) || [];
-                if (!branches.length) {
-                    const opt = document.createElement('option');
-                    opt.value = '';
-                    opt.textContent = 'Відділення не знайдені';
-                    branchSelect.appendChild(opt);
                     return;
                 }
-                branches.forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b;
-                    opt.textContent = b;
-                    branchSelect.appendChild(opt);
-                });
-            }
+            } catch(e) {}
+            (mockData[provider]?.cities || []).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                cityList.appendChild(opt);
+            });
+        }
 
-            const citySearchDebounced = debounce(async () => {
-                const provider = deliverySelect.value;
-                const city = cityInput.value.trim();
-                if (city.length >= 2) {
-                    await populateCityList(provider, city);
+        async function populateBranches(provider, city) {
+            branchSelect.innerHTML = '';
+            const pid = provider === 'Nova Poshta' ? 'np' : 'ukr';
+            try {
+                const cityData = cityRefMap.get(city);
+                const refValue = cityData?.DeliveryCity || cityData?.Ref;
+                const url = refValue
+                    ? `${API_BASE}/api/${pid}/branches?cityRef=${encodeURIComponent(refValue)}`
+                    : `${API_BASE}/api/${pid}/branches?cityName=${encodeURIComponent(city)}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                if (Array.isArray(data) && data.length) {
+                    data.forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.Description || b;
+                        opt.textContent = b.Description || b;
+                        branchSelect.appendChild(opt);
+                    });
+                    return;
                 }
+            } catch(e) {}
+            const branches = mockData[provider]?.branches?.[city] || [];
+            if (!branches.length) {
+                branchSelect.innerHTML = '<option value="">Відділення не знайдені</option>';
+                return;
+            }
+            branches.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b; opt.textContent = b;
+                branchSelect.appendChild(opt);
+            });
+        }
+
+        cityInput.addEventListener('input', () => {
+            clearTimeout(cityTimer);
+            cityTimer = setTimeout(async () => {
+                const q = cityInput.value.trim();
+                await populateCityList(deliverySelect.value, q);
+                if (q.length >= 2) populateBranches(deliverySelect.value, q);
+                else branchSelect.innerHTML = '<option value="">Оберіть населений пункт</option>';
             }, 300);
+        });
 
-            function updateBranchesOnInput() {
-                const provider = deliverySelect.value;
-                const city = cityInput.value.trim();
-                if (city.length >= 2) {
-                    populateBranches(provider, city);
-                } else {
-                    branchSelect.innerHTML = '<option value="">Оберіть населений пункт</option>';
-                }
-            }
+        deliverySelect.addEventListener('change', () => {
+            cityInput.value = '';
+            cityList.innerHTML = '';
+            branchSelect.innerHTML = '<option value="">Оберіть населений пункт</option>';
+            cityRefMap.clear();
+        });
+    })();
 
-            function onProviderChange() {
-                const provider = deliverySelect.value;
-                cityRefMap.clear();
-                // reset city and branches
-                cityInput.value = '';
-                cityList.innerHTML = '';
-                branchSelect.innerHTML = '<option value="">Оберіть населений пункт</option>';
-                // show branch selector for these providers
-                branchGroup.style.display = 'block';
-                // if provider would require full address (e.g., кур'єр), show addressDetailGroup
-                addressDetailGroup.style.display = 'none';
-            }
+    async function submitOrder() {
+        const name = document.getElementById('name').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const delivery = document.getElementById('delivery-select').value;
+        const city = document.getElementById('city-input').value.trim();
+        const branch = document.getElementById('branch-select').value;
+        const comment = document.getElementById('comment').value.trim();
+        const msg = document.getElementById('msg');
+        const btn = document.getElementById('submit-btn');
 
-            cityInput.addEventListener('input', function(){
-                citySearchDebounced();
-                updateBranchesOnInput();
+        if (!name || !phone) {
+            msg.textContent = "Будь ласка, заповніть ім'я та телефон";
+            msg.className = 'msg error';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Відправляємо...';
+        msg.className = 'msg';
+
+        try {
+            const res = await fetch('/api/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, phone, delivery, city, branch, comment })
             });
+            const data = await res.json();
+            if (res.ok) {
+                msg.textContent = '✅ Замовлення прийнято! Ми зв\'яжемося з вами найближчим часом.';
+                msg.className = 'msg success';
+                document.getElementById('name').value = '';
+                document.getElementById('phone').value = '';
+                document.getElementById('city-input').value = '';
+                document.getElementById('comment').value = '';
+            } else {
+                msg.textContent = data.error || 'Помилка відправки';
+                msg.className = 'msg error';
+            }
+        } catch(e) {
+            msg.textContent = 'Помилка з\'єднання з сервером';
+            msg.className = 'msg error';
+        }
 
-            deliverySelect.addEventListener('change', onProviderChange);
-
-            document.addEventListener('DOMContentLoaded', function(){
-                // init
-                cityList.innerHTML = '';
-                branchSelect.innerHTML = '<option value="">Оберіть населений пункт</option>';
-                // if URL contains city or branch, prefill
-                try{
-                    const params = new URLSearchParams(window.location.search);
-                    const city = params.get('city');
-                    const branch = params.get('branch');
-                    if (city) {
-                        cityInput.value = city;
-                        populateCityList(deliverySelect.value, city);
-                        populateBranches(deliverySelect.value, city).then(() => {
-                            if (branch) {
-                                setTimeout(()=>{
-                                    for (const opt of branchSelect.options) {
-                                        if (opt.value === branch) { opt.selected = true; break; }
-                                    }
-                                }, 50);
-                            }
-                        });
-                    }
-                } catch(e) { /* silent */ }
-            });
-
-        })();
+        btn.disabled = false;
+        btn.textContent = 'Підтвердити замовлення';
+    }
     </script>
 
 </body>
