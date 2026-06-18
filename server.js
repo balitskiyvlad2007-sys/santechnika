@@ -196,22 +196,23 @@ app.get('/api/announcements', (req, res) => {
 
 // POST /api/announcements - add announcement (requires password)
 app.post('/api/announcements', (req, res) => {
-  const { password, title, description, imageUrl } = req.body;
-  if (password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'Invalid password' });
-  }
-  if (!title || !description) {
-    return res.status(400).json({ error: 'Title and description are required' });
-  }
-  const announcements = loadAnnouncements();
-  const newAnnouncement = {
+    // 1. Принимаем все поля, включая price
+    const { password, title, description, imageUrl, price } = req.body;
+
+    // ... твоя проверка пароля ...
+
+    // 2. Создаем объект
+    const newAnnouncement = {
         id: Date.now().toString(),
         title,
         description,
         imageUrl: imageUrl || '',
-        price: price || 'Договірна', // <--- ВОТ ТУТ ЦЕНА ПРИНИМАЕТСЯ
+        price: price || 'Договірна', // <--- ВОТ ЭТО БЫЛО НУЖНО
         createdAt: new Date().toISOString()
     };
+
+    // ... сохранение в файл ...
+
   announcements.push(newAnnouncement);
   saveAnnouncements(announcements);
   res.json({ success: true, announcement: newAnnouncement });
