@@ -254,32 +254,28 @@ loadProducts();
         filterProducts();
     </script>
     <script>
-    async function loadProducts() {
-        try {
-            const res = await fetch('/api/announcements');
-            const products = await res.json();
-            const grid = document.getElementById('catalog-grid');
-            
-            // Если товаров нет, ничего не пишем, чтобы не ломать дизайн
-            if (!products.length) return;
-
-            grid.innerHTML = products.map(p => `
-                <div class="product-card">
-                    <div>
+        async function loadProducts() {
+            try {
+                const res = await fetch('/api/announcements');
+                const products = await res.json();
+                const grid = document.getElementById('catalog-grid');
+                
+                grid.innerHTML = products.map(p => `
+                    <div class="product-card">
                         ${p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.title}">` : ''}
                         <h3 class="product-title">${p.title}</h3>
                         <p class="product-desc">${p.description}</p>
+                        <div class="product-footer">
+                            <span class="product-price">${p.price || 'Договірна'}</span>
+                            <a href="order.html?product=${encodeURIComponent(p.title)}" class="buy-btn">Замовити</a>
+                        </div>
                     </div>
-                    <div class="product-footer">
-                        <span class="product-price">${p.price || 'Уточняйте'}</span>
-                    </div>
-                </div>
-            `).join('');
-        } catch (e) {
-            console.error('Ошибка загрузки:', e);
+                `).join('');
+            } catch (e) {
+                console.error('Помилка завантаження товарів:', e);
+            }
         }
-    }
-    loadProducts();
-</script>
+        loadProducts();
+    </script>
 </body>
 </html>
