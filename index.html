@@ -114,6 +114,30 @@
 
         <main class="catalog" id="catalog-grid">
     </main>
+
+<script>
+async function loadProducts() {
+    const res = await fetch('/api/announcements');
+    const products = await res.json();
+    const grid = document.getElementById('catalog-grid');
+    
+    grid.innerHTML = products.map(p => `
+        <div class="product-card">
+            <div>
+                ${p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.title}">` : ''}
+                <h3 class="product-title">${p.title}</h3>
+                <p class="product-desc">${p.description}</p>
+            </div>
+            <div class="product-footer">
+                <span class="product-price">${p.price || 'Договірна'}</span>
+                <a href="order.html?product=${encodeURIComponent(p.title)}" class="buy-btn">Замовити</a>
+            </div>
+        </div>
+    `).join('');
+}
+loadProducts();
+</script>
+    </main>
         <a class="product-card" data-category="mixers" href="product-kitchen-mixer.html">
             <div>
                 <img src="images/zmishuvach.webp" alt="Кухонний змішувач">
