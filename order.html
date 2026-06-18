@@ -263,7 +263,19 @@
         btn.disabled = false;
         btn.textContent = 'Підтвердити замовлення';
     }
-    </script>
+    <script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        // Ловим название товара, если оно передано через URL (как мы делали для объявлений)
+        const productFromUrl = params.get('product');
+        const commentField = document.getElementById('comment');
+
+        if (productFromUrl && commentField) {
+            commentField.value = `Замовлення на товар: ${productFromUrl}`;
+            commentField.readOnly = true; // Чтобы юзер не стер название
+        }
+    });
+</script>
 
 </body>
 </html>
