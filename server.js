@@ -239,7 +239,8 @@ app.post('/api/order', async (req, res) => {
   }
 
   const TG_TOKEN = process.env.TG_TOKEN;
-  const TG_CHAT_ID = process.env.TG_CHAT_ID;
+  // TG_CHAT_IDS — через кому: 123456,789012,345678
+  const chatIds = (process.env.TG_CHAT_IDS || process.env.TG_CHAT_ID || '').split(',').map(s => s.trim()).filter(Boolean);
 
   const text = [
     '🛒 *Нове замовлення!*',
@@ -252,13 +253,13 @@ app.post('/api/order', async (req, res) => {
   ].join('\n');
 
   try {
-    const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: TG_CHAT_ID, text, parse_mode: 'Markdown' }),
-    });
-    const data = await r.json();
-    if (!data.ok) throw new Error(data.description);
+    await Promise.all(chatIds.map(chat_id =>
+      fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id, text, parse_mode: 'Markdown' }),
+      })
+    ));
     res.json({ success: true });
   } catch (err) {
     console.error('Telegram error:', err.message);
