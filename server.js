@@ -300,14 +300,15 @@ app.post('/api/order', async (req, res) => {
     `,
   };
 
-  try {
+ try {
+    console.log('Пробуем отправить письмо...');
+    // Тут должен быть строго AWAIT
     await transporter.sendMail(mailOptions);
+    console.log('Письмо успешно отправлено!');
     res.json({ success: true });
   } catch (err) {
     console.error('Mail error:', err.message);
     res.status(500).json({ error: 'Помилка відправки. Перевірте GMAIL_USER та GMAIL_PASS.' });
   }
+// Вот здесь закрывается сам роут app.post
 });
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('Proxy listening on', PORT));
