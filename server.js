@@ -196,26 +196,25 @@ app.get('/api/announcements', (req, res) => {
 
 // POST /api/announcements - add announcement (requires password)
 app.post('/api/announcements', (req, res) => {
-    // 1. Принимаем все поля, включая price
     const { password, title, description, imageUrl, price } = req.body;
+    
+    // ... здесь твоя проверка пароля ...
 
-    // ... твоя проверка пароля ...
-
-    // 2. Создаем объект
     const newAnnouncement = {
         id: Date.now().toString(),
         title,
         description,
         imageUrl: imageUrl || '',
-        price: price || 'Договірна', // <--- ВОТ ЭТО БЫЛО НУЖНО
+        price: price || 'Договірна',
         createdAt: new Date().toISOString()
     };
 
-    // ... сохранение в файл ...
+    // ВОТ ЭТОЙ СТРОКИ У ТЕБЯ НЕ ХВАТАЕТ ИЛИ ОНА В ДРУГОМ МЕСТЕ:
+    const announcements = LoadAnnouncements(); 
 
-  announcements.push(newAnnouncement);
-  saveAnnouncements(announcements);
-  res.json({ success: true, announcement: newAnnouncement });
+    announcements.push(newAnnouncement); // Теперь переменная существует!
+    saveAnnouncements(announcements);
+    res.json({ success: true, announcement: newAnnouncement });
 });
 
 // DELETE /api/announcements/:id - delete announcement (requires password)
