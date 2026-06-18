@@ -3,6 +3,8 @@ const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const nodemailer = require('nodemailer');
 
 const app = express();
 app.use(cors());
@@ -12,7 +14,6 @@ app.use(express.static(path.join(__dirname)));
 const NP_API = 'https://api.novaposhta.ua/v2.0/json/';
 
 // Try to load local Ukrposhta dump if present
-const fs = require('fs');
 let ukrData = null;
 const ukrPath = './data/ukrpost.json';
 if (fs.existsSync(ukrPath)) {
@@ -39,6 +40,30 @@ function setCached(key, value) {
   cache.set(key, { ts: Date.now(), value });
 }
 
+// Внутренняя функция для поиска городов (чтобы не спамить localhost)
+async function searchNPSettlements(q) {
+  const body = {
+    apiKey: process.env.NP_API_KEY || '',
+    modelName: 'Address',
+    calledMethod: 'searchSettlements',
+    methodProperties: { CityName: q }
+  };
+  const r = await fetch(NP_API, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+  const data = await r.json();
+  let items = [];
+  if (data && data.data) {
+    const first = data.data[0];
+    if (first && Array.isArray(first.Addresses)) {
+      items = first.Addresses.map(s => ({ Description: s.Present || s.MainDescription || s.Description, Ref: s.Ref, DeliveryCity: s.DeliveryCity }));
+    } else {
+      items = data.data.map(s => ({ Description: s.Description || s.Present || s.MainDescription, Ref: s.Ref, DeliveryCity: s.DeliveryCity }));
+    }
+  }
+  return items;
+}
+
 app.get('/', (req, res) => res.send('Proxy for Nova Poshta / Ukrposhta'));
 
 // Nova Poshta: search settlements
@@ -48,29 +73,7 @@ app.get('/api/np/search', async (req, res) => {
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
   try {
-    const body = {
-      apiKey: process.env.NP_API_KEY || '',
-      modelName: 'Address',
-      calledMethod: 'searchSettlements',
-      methodProperties: { CityName: q }
-    };
-    const r = await fetch(NP_API, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-    });
-    const data = await r.json();
-    console.log('NP search raw response for q=', q, JSON.stringify(data).slice(0,400));
-    // Normalize to simple array of { Description, Ref }
-    let items = [];
-    if (data && data.data) {
-      // Newer NP responses may nest results under data[0].Addresses
-      const first = data.data[0];
-      if (first && Array.isArray(first.Addresses)) {
-        items = first.Addresses.map(s => ({ Description: s.Present || s.MainDescription || s.Description, Ref: s.Ref, DeliveryCity: s.DeliveryCity }));
-      } else {
-        items = data.data.map(s => ({ Description: s.Description || s.Present || s.MainDescription, Ref: s.Ref, DeliveryCity: s.DeliveryCity }));
-      }
-    }
-    
+    const items = await searchNPSettlements(q);
     setCached(cacheKey, items);
     res.json(items);
   } catch (err) {
@@ -78,7 +81,7 @@ app.get('/api/np/search', async (req, res) => {
   }
 });
 
-// Nova Poshta: get warehouses by cityRef or by city name (best-effort)
+// Nova Poshta: get warehouses by cityRef or by city name
 app.get('/api/np/branches', async (req, res) => {
   const cityRef = req.query.cityRef;
   const cityName = req.query.cityName;
@@ -86,9 +89,7 @@ app.get('/api/np/branches', async (req, res) => {
   try {
     let ref = cityRef;
     if (!ref && cityName) {
-      // try to resolve cityName -> Ref
-      const searchRes = await fetch('http://localhost:3000/api/np/search?q=' + encodeURIComponent(cityName));
-      const settlements = await searchRes.json();
+      const settlements = await searchNPSettlements(cityName);
       if (settlements && settlements.length) {
         const normalizedCity = cityName.trim().toLowerCase();
         const exactMatch = settlements.find(s => {
@@ -118,12 +119,11 @@ app.get('/api/np/branches', async (req, res) => {
                 break;
               }
             } catch (e) {
-              // ignore probe errors and try next candidate
+              // ignore probe errors
             }
           }
           if (ref) break;
         }
-        // fallback to first candidate if none produced warehouses
         if (!ref) ref = settlements[0].Ref || settlements[0].DeliveryCity;
       }
     }
@@ -139,7 +139,6 @@ app.get('/api/np/branches', async (req, res) => {
     };
     const r = await fetch(NP_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await r.json();
-    console.log('NP getWarehouses raw for ref=', ref, JSON.stringify(data).slice(0,800));
     const items = (data && data.data) ? data.data.map(w => ({ Description: w.Description, Number: w.Number, Ref: w.Ref })) : [];
     setCached(cacheKey, items);
     res.json(items);
@@ -148,14 +147,14 @@ app.get('/api/np/branches', async (req, res) => {
   }
 });
 
-// Ukrposhta endpoints - placeholder: many users prefer downloading official dumps
+// Ukrposhta endpoints
 app.get('/api/ukr/search', (req, res) => {
   const q = (req.query.q || '').toLowerCase();
   if (ukrData && Array.isArray(ukrData.cities)) {
     const matches = ukrData.cities.filter(c => c.name.toLowerCase().includes(q)).slice(0, 50);
     return res.json(matches);
   }
-  res.status(501).json({ error: 'Ukrposhta proxy not implemented. Place data/ukrpost.json with { cities, branches }.' });
+  res.status(501).json({ error: 'Ukrposhta proxy not implemented. Place data/ukrpost.json.' });
 });
 app.get('/api/ukr/branches', (req, res) => {
   const city = req.query.city || req.query.cityName || '';
@@ -163,7 +162,7 @@ app.get('/api/ukr/branches', (req, res) => {
     const b = ukrData.branches[city] || ukrData.branches[city.toLowerCase()] || [];
     return res.json(b);
   }
-  res.status(501).json({ error: 'Ukrposhta proxy not implemented. Place data/ukrpost.json with { cities, branches }.' });
+  res.status(501).json({ error: 'Ukrposhta proxy not implemented. Place data/ukrpost.json.' });
 });
 
 // Announcements management
@@ -188,14 +187,10 @@ function saveAnnouncements(data) {
   fs.writeFileSync(ANNOUNCEMENTS_FILE, JSON.stringify(data, null, 2));
 }
 
-// GET /api/announcements - get all announcements
 app.get('/api/announcements', (req, res) => {
   const announcements = loadAnnouncements();
   res.json(announcements);
 });
-
-// POST /api/announcements - add announcement (requires password)
-// ================= ANNOUNCEMENTS ROUTES =================
 
 app.post('/api/announcements', (req, res) => {
   const { password, title, description, imageUrl } = req.body;
@@ -218,7 +213,6 @@ app.post('/api/announcements', (req, res) => {
   res.json({ success: true, announcement: newAnnouncement });
 });
 
-// DELETE /api/announcements/:id - delete announcement (requires password)
 app.delete('/api/announcements/:id', (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) {
@@ -233,21 +227,16 @@ app.delete('/api/announcements/:id', (req, res) => {
   res.json({ success: true, message: 'Announcement deleted' });
 });
 
-
 // ================= ORDER FORM (NODEMAILER) =================
-
-const nodemailer = require('nodemailer');
 
 app.post('/api/order', async (req, res) => {
   try {
     const { name, phone, delivery, city, branch, comment } = req.body;
 
-    // Если нет имени или телефона, сразу отдаем ошибку
     if (!name || !phone) {
-      return res.status(400).json({ error: "Ім'я та телефон обов'язкові для заповнения" });
+      return res.status(400).json({ error: "Ім'я та телефон обов'язкові для заповнення" });
     }
 
-    // Настройка транспорта под защищенный порт 465 (SSL)
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
@@ -256,7 +245,7 @@ app.post('/api/order', async (req, res) => {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASS,
       },
-      connectionTimeout: 10000, // 10 секунд лимит на подключение
+      connectionTimeout: 10000,
     });
 
     const mailOptions = {
@@ -267,7 +256,7 @@ app.post('/api/order', async (req, res) => {
         <h2>Нове замовлення</h2>
         <table style="border-collapse:collapse;width:100%">
           <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Ім'я</td><td style="padding:8px;border:1px solid #ddd">${name}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Telephone</td><td style="padding:8px;border:1px solid #ddd">${phone}</td></tr>
+          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Телефон</td><td style="padding:8px;border:1px solid #ddd">${phone}</td></tr>
           <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Доставка</td><td style="padding:8px;border:1px solid #ddd">${delivery || '—'}</td></tr>
           <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Місто</td><td style="padding:8px;border:1px solid #ddd">${city || '—'}</td></tr>
           <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Відділення</td><td style="padding:8px;border:1px solid #ddd">${branch || '—'}</td></tr>
@@ -287,3 +276,6 @@ app.post('/api/order', async (req, res) => {
     return res.status(500).json({ error: 'Помилка сервера при відправці: ' + error.message });
   }
 });
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
