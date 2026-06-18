@@ -3,8 +3,6 @@ const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
-const nodemailer = require('nodemailer');
 
 const app = express();
 app.use(cors());
@@ -14,6 +12,7 @@ app.use(express.static(path.join(__dirname)));
 const NP_API = 'https://api.novaposhta.ua/v2.0/json/';
 
 // Try to load local Ukrposhta dump if present
+const fs = require('fs');
 let ukrData = null;
 const ukrPath = './data/ukrpost.json';
 if (fs.existsSync(ukrPath)) {
@@ -40,30 +39,6 @@ function setCached(key, value) {
   cache.set(key, { ts: Date.now(), value });
 }
 
-// Внутренняя функция для поиска городов (чтобы не спамить localhost)
-async function searchNPSettlements(q) {
-  const body = {
-    apiKey: process.env.NP_API_KEY || '',
-    modelName: 'Address',
-    calledMethod: 'searchSettlements',
-    methodProperties: { CityName: q }
-  };
-  const r = await fetch(NP_API, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-  });
-  const data = await r.json();
-  let items = [];
-  if (data && data.data) {
-    const first = data.data[0];
-    if (first && Array.isArray(first.Addresses)) {
-      items = first.Addresses.map(s => ({ Description: s.Present || s.MainDescription || s.Description, Ref: s.Ref, DeliveryCity: s.DeliveryCity }));
-    } else {
-      items = data.data.map(s => ({ Description: s.Description || s.Present || s.MainDescription, Ref: s.Ref, DeliveryCity: s.DeliveryCity }));
-    }
-  }
-  return items;
-}
-
 app.get('/', (req, res) => res.send('Proxy for Nova Poshta / Ukrposhta'));
 
 // Nova Poshta: search settlements
@@ -73,7 +48,29 @@ app.get('/api/np/search', async (req, res) => {
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
   try {
-    const items = await searchNPSettlements(q);
+    const body = {
+      apiKey: process.env.NP_API_KEY || '',
+      modelName: 'Address',
+      calledMethod: 'searchSettlements',
+      methodProperties: { CityName: q }
+    };
+    const r = await fetch(NP_API, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    console.log('NP search raw response for q=', q, JSON.stringify(data).slice(0,400));
+    // Normalize to simple array of { Description, Ref }
+    let items = [];
+    if (data && data.data) {
+      // Newer NP responses may nest results under data[0].Addresses
+      const first = data.data[0];
+      if (first && Array.isArray(first.Addresses)) {
+        items = first.Addresses.map(s => ({ Description: s.Present || s.MainDescription || s.Description, Ref: s.Ref, DeliveryCity: s.DeliveryCity }));
+      } else {
+        items = data.data.map(s => ({ Description: s.Description || s.Present || s.MainDescription, Ref: s.Ref, DeliveryCity: s.DeliveryCity }));
+      }
+    }
+    
     setCached(cacheKey, items);
     res.json(items);
   } catch (err) {
@@ -81,7 +78,7 @@ app.get('/api/np/search', async (req, res) => {
   }
 });
 
-// Nova Poshta: get warehouses by cityRef or by city name
+// Nova Poshta: get warehouses by cityRef or by city name (best-effort)
 app.get('/api/np/branches', async (req, res) => {
   const cityRef = req.query.cityRef;
   const cityName = req.query.cityName;
@@ -89,7 +86,9 @@ app.get('/api/np/branches', async (req, res) => {
   try {
     let ref = cityRef;
     if (!ref && cityName) {
-      const settlements = await searchNPSettlements(cityName);
+      // try to resolve cityName -> Ref
+      const searchRes = await fetch('http://localhost:3000/api/np/search?q=' + encodeURIComponent(cityName));
+      const settlements = await searchRes.json();
       if (settlements && settlements.length) {
         const normalizedCity = cityName.trim().toLowerCase();
         const exactMatch = settlements.find(s => {
@@ -119,11 +118,12 @@ app.get('/api/np/branches', async (req, res) => {
                 break;
               }
             } catch (e) {
-              // ignore probe errors
+              // ignore probe errors and try next candidate
             }
           }
           if (ref) break;
         }
+        // fallback to first candidate if none produced warehouses
         if (!ref) ref = settlements[0].Ref || settlements[0].DeliveryCity;
       }
     }
@@ -139,6 +139,7 @@ app.get('/api/np/branches', async (req, res) => {
     };
     const r = await fetch(NP_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await r.json();
+    console.log('NP getWarehouses raw for ref=', ref, JSON.stringify(data).slice(0,800));
     const items = (data && data.data) ? data.data.map(w => ({ Description: w.Description, Number: w.Number, Ref: w.Ref })) : [];
     setCached(cacheKey, items);
     res.json(items);
@@ -147,14 +148,14 @@ app.get('/api/np/branches', async (req, res) => {
   }
 });
 
-// Ukrposhta endpoints
+// Ukrposhta endpoints - placeholder: many users prefer downloading official dumps
 app.get('/api/ukr/search', (req, res) => {
   const q = (req.query.q || '').toLowerCase();
   if (ukrData && Array.isArray(ukrData.cities)) {
     const matches = ukrData.cities.filter(c => c.name.toLowerCase().includes(q)).slice(0, 50);
     return res.json(matches);
   }
-  res.status(501).json({ error: 'Ukrposhta proxy not implemented. Place data/ukrpost.json.' });
+  res.status(501).json({ error: 'Ukrposhta proxy not implemented. Place data/ukrpost.json with { cities, branches }.' });
 });
 app.get('/api/ukr/branches', (req, res) => {
   const city = req.query.city || req.query.cityName || '';
@@ -162,7 +163,7 @@ app.get('/api/ukr/branches', (req, res) => {
     const b = ukrData.branches[city] || ukrData.branches[city.toLowerCase()] || [];
     return res.json(b);
   }
-  res.status(501).json({ error: 'Ukrposhta proxy not implemented. Place data/ukrpost.json.' });
+  res.status(501).json({ error: 'Ukrposhta proxy not implemented. Place data/ukrpost.json with { cities, branches }.' });
 });
 
 // Announcements management
@@ -187,11 +188,13 @@ function saveAnnouncements(data) {
   fs.writeFileSync(ANNOUNCEMENTS_FILE, JSON.stringify(data, null, 2));
 }
 
+// GET /api/announcements - get all announcements
 app.get('/api/announcements', (req, res) => {
   const announcements = loadAnnouncements();
   res.json(announcements);
 });
 
+// POST /api/announcements - add announcement (requires password)
 app.post('/api/announcements', (req, res) => {
   const { password, title, description, imageUrl } = req.body;
   if (password !== ADMIN_PASSWORD) {
@@ -213,6 +216,7 @@ app.post('/api/announcements', (req, res) => {
   res.json({ success: true, announcement: newAnnouncement });
 });
 
+// DELETE /api/announcements/:id - delete announcement (requires password)
 app.delete('/api/announcements/:id', (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) {
@@ -227,54 +231,40 @@ app.delete('/api/announcements/:id', (req, res) => {
   res.json({ success: true, message: 'Announcement deleted' });
 });
 
-// ================= ORDER FORM (NODEMAILER) =================
-
+// Order form — send to Telegram bot
 app.post('/api/order', async (req, res) => {
+  const { name, phone, delivery, city, branch, comment } = req.body;
+  if (!name || !phone) {
+    return res.status(400).json({ error: "Ім'я та телефон обов'язкові" });
+  }
+
+  const TG_TOKEN = process.env.TG_TOKEN;
+  const TG_CHAT_ID = process.env.TG_CHAT_ID;
+
+  const text = [
+    '🛒 *Нове замовлення!*',
+    `👤 *Ім'я:* ${name}`,
+    `📞 *Телефон:* ${phone}`,
+    `🚚 *Доставка:* ${delivery || '—'}`,
+    `📍 *Місто:* ${city || '—'}`,
+    `🏪 *Відділення:* ${branch || '—'}`,
+    `💬 *Товар/Коментар:* ${comment || '—'}`,
+  ].join('\n');
+
   try {
-    const { name, phone, delivery, city, branch, comment } = req.body;
-
-    if (!name || !phone) {
-      return res.status(400).json({ error: "Ім'я та телефон обов'язкові для заповнення" });
-    }
-
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // для 587 порта secure ДОЛЖЕН быть false
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_PASS, // Тут строго 16-значный пароль приложения!
-      },
-      connectionTimeout: 10000,
+    const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TG_CHAT_ID, text, parse_mode: 'Markdown' }),
     });
-    const mailOptions = {
-      from: process.env.GMAIL_USER,
-      to: process.env.ORDER_EMAIL || process.env.GMAIL_USER,
-      subject: '🛒 Нове замовлення з сайту!',
-      html: `
-        <h2>Нове замовлення</h2>
-        <table style="border-collapse:collapse;width:100%">
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Ім'я</td><td style="padding:8px;border:1px solid #ddd">${name}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Телефон</td><td style="padding:8px;border:1px solid #ddd">${phone}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Доставка</td><td style="padding:8px;border:1px solid #ddd">${delivery || '—'}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Місто</td><td style="padding:8px;border:1px solid #ddd">${city || '—'}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Відділення</td><td style="padding:8px;border:1px solid #ddd">${branch || '—'}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Товар / Коментар</td><td style="padding:8px;border:1px solid #ddd">${comment || '—'}</td></tr>
-        </table>
-      `,
-    };
-
-    console.log('Пробуем отправить письмо через Nodemailer...');
-    await transporter.sendMail(mailOptions);
-    console.log('Письмо успешно отправлено!');
-    
-    return res.json({ success: true, message: 'Замовлення успішно відправлено' });
-
-  } catch (error) {
-    console.error('КРИТИЧЕСКАЯ ОШИБКА НА СЕРВЕРЕ:', error);
-    return res.status(500).json({ error: 'Помилка сервера при відправці: ' + error.message });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.description);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Telegram error:', err.message);
+    res.status(500).json({ error: 'Помилка відправки в Telegram' });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log('Proxy listening on', PORT));
