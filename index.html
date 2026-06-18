@@ -113,6 +113,7 @@
     <div class="no-results" id="no-results-msg">Нічого не знайдено за вашим запитом...</div>
 
         <main class="catalog" id="catalog-grid">
+    </main>
         <a class="product-card" data-category="mixers" href="product-kitchen-mixer.html">
             <div>
                 <img src="images/zmishuvach.webp" alt="Кухонний змішувач">
@@ -228,5 +229,33 @@
 
         filterProducts();
     </script>
+    <script>
+    async function loadProducts() {
+        try {
+            const res = await fetch('/api/announcements');
+            const products = await res.json();
+            const grid = document.getElementById('catalog-grid');
+            
+            // Если товаров нет, ничего не пишем, чтобы не ломать дизайн
+            if (!products.length) return;
+
+            grid.innerHTML = products.map(p => `
+                <div class="product-card">
+                    <div>
+                        ${p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.title}">` : ''}
+                        <h3 class="product-title">${p.title}</h3>
+                        <p class="product-desc">${p.description}</p>
+                    </div>
+                    <div class="product-footer">
+                        <span class="product-price">${p.price || 'Уточняйте'}</span>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            console.error('Ошибка загрузки:', e);
+        }
+    }
+    loadProducts();
+</script>
 </body>
 </html>
