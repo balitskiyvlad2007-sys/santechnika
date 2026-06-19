@@ -326,17 +326,18 @@ function renderDynamicCards(items) {
         card.setAttribute('data-category', 'dynamic');
         card.setAttribute('data-dynamic', item.id);
         card.innerHTML = `
-            ${item.imageUrl
-                ? `<img src="${item.imageUrl}" alt="${esc(item.title)}" onerror="this.parentNode.querySelector('.product-card-img-placeholder').style.display='flex';this.style.display='none'">`
-                : ''}
-            <div class="product-card-img-placeholder" style="${item.imageUrl ? 'display:none' : ''}">📢</div>
-            <div class="product-card-body" style="cursor:pointer" onclick="location.href='product.html?id=${item.id}'">
-                <div class="product-title">${item.title}</div>
-                <div class="product-desc">${item.description}</div>
-                <div class="product-footer">
-                    <span class="product-price">${item.price || 'Договірна'}</span>
+            <a href="product.html?id=${item.id}" style="text-decoration:none;color:inherit;display:block">
+                ${item.imageUrl
+                    ? `<img src="${item.imageUrl}" alt="${esc(item.title)}" style="width:100%;height:220px;object-fit:cover;display:block" onerror="this.style.display='none'">`
+                    : '<div style="width:100%;height:220px;background:linear-gradient(135deg,#ff5c00,#ff8c42);display:flex;align-items:center;justify-content:center;font-size:3rem">📢</div>'}
+                <div class="product-card-body">
+                    <div class="product-title">${item.title}</div>
+                    <div class="product-desc">${item.description}</div>
+                    <div class="product-footer">
+                        <span class="product-price">${item.price || 'Договірна'}</span>
+                    </div>
                 </div>
-            </div>
+            </a>
             <div class="card-admin-actions">
                 <button class="btn btn-edit" onclick="openEdit('${item.id}','${esc2(item.title)}','${esc2(item.description)}','${esc2(item.imageUrl||'')}','${esc2(item.price||'')}')">✏️ Редагувати</button>
                 <button class="btn btn-danger" onclick="deleteItem('${item.id}')">🗑️ Видалити</button>
