@@ -1,15 +1,13 @@
 {
   "name": "delivery-proxy",
   "version": "1.0.0",
-  "description": "Proxy to fetch Nova Poshta and Ukrposhta data for order form",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
+  "scripts": { "start": "node server.js" },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
     "express": "^4.18.2",
-    "node-fetch": "^2.6.7"
+    "node-fetch": "^2.6.7",
+    "pg": "^8.11.3"
   }
 }

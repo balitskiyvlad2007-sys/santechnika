@@ -330,12 +330,11 @@ function renderDynamicCards(items) {
                 ? `<img src="${item.imageUrl}" alt="${esc(item.title)}" onerror="this.parentNode.querySelector('.product-card-img-placeholder').style.display='flex';this.style.display='none'">`
                 : ''}
             <div class="product-card-img-placeholder" style="${item.imageUrl ? 'display:none' : ''}">📢</div>
-            <div class="product-card-body">
+            <div class="product-card-body" style="cursor:pointer" onclick="location.href='product.html?id=${item.id}'">
                 <div class="product-title">${item.title}</div>
                 <div class="product-desc">${item.description}</div>
                 <div class="product-footer">
                     <span class="product-price">${item.price || 'Договірна'}</span>
-                    <a class="order-btn" href="order.html?title=${encodeURIComponent(item.title)}">Замовити</a>
                 </div>
             </div>
             <div class="card-admin-actions">
